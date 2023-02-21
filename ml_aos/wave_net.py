@@ -30,8 +30,8 @@ class WaveNet(nn.Module):
 
         # first define some parameters that will be accessed by
         # the MachineLearningAlgorithm in ts_wep
-        self.camType = "LsstCam"
-        self.inputShape = (170, 170)  # just the 2D image shape
+        self.camType = "AuxTel"
+        self.inputShape = (256, 256)  # just the 2D image shape
 
         # also define the mean and std for data whitening
         # these were determined from a small sample of the training set
@@ -43,8 +43,8 @@ class WaveNet(nn.Module):
         # -------------------------------------------
 
         # first we will pad incoming images to reach a 256x256 shape
-        pad = int((256 - self.inputShape[-1]) / 2)
-        self.padder = nn.ZeroPad2d(pad)
+        #pad = int((256 - self.inputShape[-1]) / 2)
+        #self.padder = nn.ZeroPad2d(pad)
 
         # then the DonutNet makes image features
         self.donut_net = DonutNet()
@@ -56,8 +56,6 @@ class WaveNet(nn.Module):
     def forward(
         self,
         image: torch.Tensor,
-        fx: torch.Tensor,
-        fy: torch.Tensor,
         intra: torch.Tensor,
     ) -> torch.Tensor:
         """Predict Zernike coefficients for the donut image.
@@ -66,10 +64,6 @@ class WaveNet(nn.Module):
         ----------
         image: torch.Tensor
             The donut image
-        fx: torch.Tensor
-            The x angle of the source with respect to the optic axis
-        fy: torch.Tensor
-            The y angle of the source with respect to the optic axis
         intra: torch.Tensor
             Boolean indicating whether the donut is intra or extra focal
 
@@ -79,9 +73,9 @@ class WaveNet(nn.Module):
             Array of Zernike coefficients
         """
         image = (image - self.PIXEL_MEAN) / self.PIXEL_STD
-        padded_image = self.padder(image)
-        image_features = self.donut_net(padded_image)
-        features = torch.cat([image_features, fx, fy, intra], dim=1)
+        #padded_image = self.padder(image)
+        image_features = self.donut_net(image)
+        features = torch.cat([image_features, intra], dim=1)
         return self.meta_net(features)
 
 
@@ -231,9 +225,9 @@ class MetaNet(nn.Module):
     """
 
     # number of Zernike coefficients to predict
-    N_ZERNIKES = 19
+    N_PARAMETERS = 12
     # number of meta parameters to use in prediction
-    N_METAS = 3
+    N_METAS = 1
 
     # the dimension of the image features. This is determined by looking
     # at the dimension of outputs from DonutNet
@@ -252,7 +246,7 @@ class MetaNet(nn.Module):
         # set number of nodes in network layers using a geometric series
         n_nodes = np.geomspace(
             self.IMAGE_DIM + self.N_METAS,
-            self.N_ZERNIKES,
+            self.N_PARAMETERS,
             n_layers + 1,
             dtype=int,
         )

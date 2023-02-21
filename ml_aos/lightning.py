@@ -9,8 +9,6 @@ from torch.utils.data import DataLoader
 import wandb
 from ml_aos.dataloader import Donuts
 from ml_aos.wave_net import WaveNet as TorchWaveNet
-from ml_aos.plotting import plot_zernikes
-from ml_aos.utils import calc_mse
 
 
 class DonutLoader(pl.LightningDataModule):
@@ -96,23 +94,22 @@ class WaveNet(TorchWaveNet, pl.LightningModule):
         """Make predictions for a batch of donuts."""
         # unpack the data
         img = batch["image"]
-        z_true = batch["zernikes"]
-        fx = batch["field_x"]
-        fy = batch["field_y"]
+        dof_true = batch["dof"]
         intra = batch["intrafocal"]
 
         # predict the zernikes
-        z_pred = self(img, fx, fy, intra)
+        dof_pred = self(img, intra)
 
-        return z_pred, z_true
+        return dof_pred, dof_true
 
     def training_step(
         self, batch: Dict[str, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Calculate the loss of the training step."""
         # calculate the MSE for the batch
-        z_pred, z_true = self._predict(batch)
-        mse = calc_mse(z_pred, z_true)
+        dof_pred, dof_true = self._predict(batch)
+        mse = torch.mean((dof_pred - dof_true)**2, axis=1, keepdim=True)
+
 
         # log the mean rmse
         self.log("train_rmse", torch.sqrt(mse).mean())
@@ -128,22 +125,14 @@ class WaveNet(TorchWaveNet, pl.LightningModule):
     ) -> Tuple[torch.Tensor, ...]:
         """Perform validation step."""
         # calculate the MSE for the validation sample
-        z_pred, z_true = self._predict(batch)
-        mse = calc_mse(z_pred, z_true)
+        dof_pred, dof_true = self._predict(batch)
+        mse = torch.mean((dof_pred - dof_true)**2, axis=1, keepdim=True)
 
         # log the mean rmse
         self.log("val_rmse", torch.sqrt(mse).mean())
 
         # log the loss
         self.log("val_loss", mse.mean())
-
-        # for the first batch of the validation set, plot the Zernikes
-        if batch_idx == 0 and wandb.run is not None:
-            # draw the Zernike figure and convert to wandb image for logging
-            fig = wandb.Image(plot_zernikes(z_true.cpu(), z_pred.cpu()))
-            # log the image
-            wandb.log({"zernikes": fig, "global_step": self.trainer.global_step})
-            del fig
 
         val_outputs = mse
 
@@ -155,41 +144,3 @@ class WaveNet(TorchWaveNet, pl.LightningModule):
         mse = torch.stack(val_outputs)
         self.log("val_loss", mse.mean())
         self.log("val_rmse", torch.sqrt(mse).mean())
-
-    @torch.jit.export
-    def tswep_predict(
-        self,
-        img: torch.Tensor,
-        fx: torch.Tensor,
-        fy: torch.Tensor,
-        focalFlag: torch.Tensor,
-    ) -> torch.Tensor:
-        """Predict Zernikes for a CompensableImage from ts_wep.
-
-        Parameters
-        ----------
-        img: torch.Tensor
-            The donut image
-        fx: torch.Tensor
-            x-axis field angle, in degrees
-        fy: torch.Tensor
-            y-axis field angle, in degrees
-        focalFlag: torch.Tensor
-            Float indicating whether the donut is intra (1.) or extra (2.) focal
-
-        Returns
-        -------
-        torch.Tensor
-            Tensor of Zernike coefficients
-        """
-        # convert the field angles to radians
-        fx = torch.deg2rad(fx)
-        fy = torch.deg2rad(fy)
-
-        # predict the zernikes in microns
-        z_pred = self(img, fx, fy, focalFlag)
-
-        # convert from microns to nanometers
-        z_pred *= 1e3
-
-        return z_pred

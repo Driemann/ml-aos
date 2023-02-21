@@ -1,14 +1,6 @@
 model:
   n_meta_layers: 3
 data:
-  background: true
-  badpix: true
-  dither: 5
-  max_blend: 0.5
-  mask_blends: false
-  center_brightest: true
-  normalize_pixels: true
-  convert_zernikes: true
   batch_size: 256
   num_workers: 16
   persistent_workers: true
@@ -19,7 +11,7 @@ optimizer:
     lr: 0.0003
 trainer:
   num_nodes: 1
-  gpus: 2
+  gpus: 1
   strategy: ddp_find_unused_parameters_false
   sync_batchnorm: true
 
