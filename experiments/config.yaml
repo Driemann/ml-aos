@@ -15,7 +15,7 @@ trainer:
   strategy: ddp_find_unused_parameters_false
   sync_batchnorm: true
 
-  max_epochs: 100
+  max_epochs: 200
   max_time: null
 
   check_val_every_n_epoch: 1

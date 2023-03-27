@@ -43,14 +43,12 @@ class Donuts(Dataset):
         data = np.load(data_file)
         
         image = data['image'][None, 22:278, 22:278]
-        intrafocal = 0 if "flip" in data_file.split("/")[-1] else 1
+        intrafocal = 0 if "extra" in data_file.split("/")[-1] else 1
         dof=data['dof']
 
         dof[0] /= 0.001 / np.sqrt(3)
         dof[1] /= 0.001 / np.sqrt(3)
-        dof[2] /= 0.0008
-        dof[3] /= (0.1 / 60 * 180 / np.pi) / np.sqrt(3)
-        dof[4] /= (0.1 / 60 * 180 / np.pi) / np.sqrt(3)
+        dof[2] /= 0.0008 / np.sqrt(3)
         output= {
             "image": torch.from_numpy(image).float(),
             "intrafocal": torch.FloatTensor([intrafocal]),
