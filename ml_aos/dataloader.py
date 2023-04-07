@@ -45,14 +45,20 @@ class Donuts(Dataset):
         image = data['image'][None, 22:278, 22:278]
         intrafocal = 0 if "extra" in data_file.split("/")[-1] else 1
         dof=data['dof']
+        temp=data['temp']
+        flux=data['flux']
+        background=data['background']
 
         dof[0] /= 0.001 / np.sqrt(3)
         dof[1] /= 0.001 / np.sqrt(3)
-        dof[2] /= 0.0008 / np.sqrt(3)
+        dof[2] /= 0.0001 / np.sqrt(3)
         output= {
             "image": torch.from_numpy(image).float(),
             "intrafocal": torch.FloatTensor([intrafocal]),
-            "dof": torch.from_numpy(dof).float()
+            "dof": torch.from_numpy(dof).float(),
+            "temp": torch.from_numpy(temp).float(), 
+            "flux": torch.from_numpy(flux).float(), 
+            "background": torch.from_numpy(background).float()
         }
         
         return output
