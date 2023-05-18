@@ -47,7 +47,7 @@ class WaveNet(nn.Module):
                 param.requires_grad = False
 
         # create linear layers that predict zernikes
-        n_meta_features = 4  # includes field_x, field_y, intra flag, wavelen
+        n_meta_features = 1  # includes field_x, field_y, intra flag, wavelen
         n_features = self.n_cnn_features + n_meta_features
 
         if len(n_predictor_layers) > 0:
@@ -87,10 +87,7 @@ class WaveNet(nn.Module):
     def forward(
         self,
         image: torch.Tensor,
-        fx: torch.Tensor,
-        fy: torch.Tensor,
         intra: torch.Tensor,
-        band: torch.Tensor,
     ) -> torch.Tensor:
         """Predict Zernikes from donut image, location, and wavelength.
 
@@ -98,14 +95,8 @@ class WaveNet(nn.Module):
         ----------
         image: torch.Tensor
             The donut image
-        fx: torch.Tensor
-            X angle of source with respect to optic axis (radians)
-        fy: torch.Tensor
-            Y angle of source with respect to optic axis (radians)
         intra: torch.Tensor
             Boolean indicating whether the donut is intra or extra focal
-        band: torch.Tensor
-            Float or integer indicating which band the donut was observed in.
 
         Returns
         -------
@@ -119,7 +110,7 @@ class WaveNet(nn.Module):
         cnn_features = self.cnn(image)
 
         # predict zernikes from all features
-        features = torch.cat([cnn_features, fx, fy, intra, band], dim=1)
+        features = torch.cat([cnn_features, intra], dim=1)
         zernikes = self.predictor(features)
 
         return zernikes
