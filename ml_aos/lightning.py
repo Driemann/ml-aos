@@ -112,8 +112,8 @@ class WaveNetSystem(pl.LightningModule):
 
         # define some parameters that will be accessed by
         # the MachineLearningAlgorithm in ts_wep
-        self.camType = "LsstCam"
-        self.inputShape = (170, 170)
+        self.camType = "Auxtel"
+        self.inputShape = (256, 256)
 
     def predict_step(
         self, batch: dict, batch_idx: int
@@ -121,10 +121,7 @@ class WaveNetSystem(pl.LightningModule):
         """Predict Zernikes and return with truth."""
         # unpack data from the dictionary
         img = batch["image"]
-        fx = batch["field_x"]
-        fy = batch["field_y"]
         intra = batch["intrafocal"]
-        band = batch["band"]
         zk_true = batch["zernikes"]
         dof_true = batch["dof"]  # noqa: F841
 
@@ -191,63 +188,3 @@ class WaveNetSystem(pl.LightningModule):
             }
         else:
             return optimizer
-
-    def forward(
-        self,
-        img: torch.Tensor,
-        fx: torch.Tensor,
-        fy: torch.Tensor,
-        focalFlag: torch.Tensor,
-        band: torch.Tensor,
-    ) -> torch.Tensor:
-        """Predict zernikes for production.
-
-        This method assumes the inputs have NOT been previously
-        transformed by ml_aos.utils.transform_inputs.
-        """
-        # rescale image to [0, 1]
-        img -= img.min()
-        img /= img.max()
-
-        # normalize image
-        image_mean = 0.347
-        image_std = 0.226
-        img = (img - image_mean) / image_std
-
-        # convert angles to radians
-        fx *= torch.pi / 180
-        fy *= torch.pi / 180
-
-        # normalize angles
-        field_mean = 0.000
-        field_std = 0.021
-        fx = (fx - field_mean) / field_std
-        fy = (fy - field_mean) / field_std
-
-        # normalize the intrafocal flags
-        intra_mean = 0.5
-        intra_std = 0.5
-        focalFlag = (focalFlag - intra_mean) / intra_std
-
-        # get the effective wavelength in microns
-        band = {
-            0: torch.FloatTensor([[0.3671]]),
-            1: torch.FloatTensor([[0.4827]]),
-            2: torch.FloatTensor([[0.6223]]),
-            3: torch.FloatTensor([[0.7546]]),
-            4: torch.FloatTensor([[0.8691]]),
-            5: torch.FloatTensor([[0.9712]]),
-        }[band.item()]
-
-        # normalize the wavelength
-        band_mean = 0.710
-        band_std = 0.174
-        band = (band - band_mean) / band_std
-
-        # predict zernikes in microns
-        zk_pred = self.wavenet(img, fx, fy, focalFlag, band)
-
-        # convert to nanometers
-        zk_pred *= 1_000
-
-        return zk_pred
