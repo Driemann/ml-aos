@@ -67,10 +67,10 @@ class WaveNet(nn.Module):
                 ]
 
             # add the final layer
-            layers += [nn.Linear(n_predictor_layers[-1], 19)]
+            layers += [nn.Linear(n_predictor_layers[-1], 3)]
 
         else:
-            layers = [nn.Linear(n_features, 19)]
+            layers = [nn.Linear(n_features, 3)]
 
         self.predictor = nn.Sequential(*layers)
 
@@ -114,3 +114,19 @@ class WaveNet(nn.Module):
         zernikes = self.predictor(features)
 
         return zernikes
+
+    def get_features(
+         self,
+        image: torch.Tensor,
+        intra: torch.Tensor,
+    ) -> torch.Tensor:
+         # reshape the image
+        image = self._reshape_image(image)
+
+        # use cnn to extract image features
+        cnn_features = self.cnn(image)
+
+        # predict zernikes from all features
+        features = torch.cat([cnn_features, intra], dim=1)
+
+        return cnn_features

@@ -9,9 +9,9 @@ class Donuts(Dataset):
     def __init__(
         self,
         mode: str = "train",
-        nval: int = 0,   #256
-        ntest: int = 10000,  #2**10
-        data_dir: str = "/astro/users/driemann/auxtel_aos/data",
+        nval: int = 256,   #256
+        ntest: int = 2**10,  #2**10
+        data_dir: str = "/astro/store/epyc/users/driemann/testing_data_sep2023",
         **kwargs: Any,
     ) -> None:
         
@@ -42,7 +42,7 @@ class Donuts(Dataset):
         # load the image
         data = np.load(data_file)
         
-        image = data['image'][None, 22:278, 22:278]
+        image = data['image'][22:278, 22:278]
 
         image -= image.min()
         image /= image.max()
@@ -57,7 +57,7 @@ class Donuts(Dataset):
         temp=data['temp']
         flux=data['flux']
         background=data['background']
-        snr=data['snr']
+        #snr=data['snr']
 
         dof[0] /= 0.001 / np.sqrt(3)
         dof[1] /= 0.001 / np.sqrt(3)
@@ -69,7 +69,7 @@ class Donuts(Dataset):
             "temp": torch.from_numpy(temp).float(), 
             "flux": torch.from_numpy(flux).float(), 
             "background": torch.from_numpy(background).float(),
-            "snr": torch.from_numpy(snr).float()
+            #"snr": torch.from_numpy(snr).float()
         }
         
         return output

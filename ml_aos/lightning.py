@@ -122,13 +122,12 @@ class WaveNetSystem(pl.LightningModule):
         # unpack data from the dictionary
         img = batch["image"]
         intra = batch["intrafocal"]
-        zk_true = batch["zernikes"]
-        dof_true = batch["dof"]  # noqa: F841
+        dof_true = batch["dof"] 
 
         # predict zernikes
-        zk_pred = self.wavenet(img, fx, fy, intra, band)
+        dof_pred = self.wavenet(img, intra)
 
-        return zk_pred, zk_true
+        return dof_pred, dof_true
 
     def calc_losses(self, batch: dict, batch_idx: int) -> tuple:
         """Predict Zernikes and calculate the losses.
@@ -141,17 +140,13 @@ class WaveNetSystem(pl.LightningModule):
         The mRSSE provides an estimate of the PSF degradation.
         """
         # predict zernikes
-        zk_pred, zk_true = self.predict_step(batch, batch_idx)
-
-        # convert to FWHM contributions
-        zk_pred = convert_zernikes(zk_pred)
-        zk_true = convert_zernikes(zk_true)
+        dof_pred, dof_true = self.predict_step(batch, batch_idx)
 
         # pull out the weights from the final linear layer
         *_, A, _ = self.wavenet.predictor.parameters()
 
         # calculate loss
-        sse = F.mse_loss(zk_pred, zk_true, reduction="none").sum(dim=-1)
+        sse = F.mse_loss(dof_pred, dof_true, reduction="none").sum(dim=-1)
         loss = sse.mean() + self.hparams.alpha * A.square().sum()
         mRSSE = torch.sqrt(sse).mean()
 
